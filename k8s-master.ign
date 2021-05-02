@@ -1,0 +1,96 @@
+{
+  "ignition": {
+    "version": "3.2.0"
+  },
+  "passwd": {
+    "users": [
+      {
+        "name": "core",
+        "sshAuthorizedKeys": [
+          "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCzUd6jfpIKjQm/ssfkrF3US9++GTNbOScH1Gw+P640tDIGPPrjnr0FfQ2CJGlKXzCqStqvtFnYLMSDRTu1Zwfc37wJxvr20n6gHm+nX9QyWmfsunA4d1DpThtjJe3VQj+6WNpwPnOc+vbihZEE7ut43tzhQLyodctUqaJg20t+wt+Ldt2koClkEcMImEOlyn6lkkJqwbj+ZpjUQRI9JMC2q7se5EBvDHLsUi5KD9kNJbriseDH4g/LV/XmXML8qvrdxGFShHNPVMlbvpQ4cawt4cm9UTVg0IJ0bJfijnI+yCMuFl6c7oeised2I6CsXMoMKR6fDJoGDl+cnnqOKgksQrXh+LR7cpAjZaBuE8qAa8/3iPjbPP4eA9kt/iu27sZ+W5St2UkoKzpxA6B5QOUpQe9C3+GvmSx725cKMyFPH5nKFCNrXY782h4TriKxKWlX3pv9l3Ezcj09LEN5n4B38X0y0hg8NZ6EbbIgMrVbLtMBQECzPUahGwsGvuYlIi4indfn0oNjkJQ+iLvGZJB5wii6EsQsaeiz778fqOjabu6mbQi9sYJXXj4oKD4LWxkgOZhmrnzJP8OqOmCRf9dAIQIXauhESOhzMmrkA7yFK3Z0wYuHcPN/+AtROLHEZMdUN+56RIccTFTcNKKhFjfY7ATT4RYuggndXHG8bvVdjQ== martin.stefany@gooddata.com"
+        ]
+      }
+    ]
+  },
+  "storage": {
+    "files": [
+      {
+        "path": "/etc/hostname",
+        "contents": {
+          "source": "data:,k8s-master.stefany.eu"
+        },
+        "mode": 420
+      },
+      {
+        "path": "/etc/NetworkManager/system-connections/enp1s0.nmconnection",
+        "contents": {
+          "source": "data:,%5Bconnection%5D%0Aid%3Denp1s0%0Atype%3Dethernet%0Ainterface-name%3Denp1s0%0A%5Bipv4%5D%0Aaddress1%3D172.17.100.100%2F16%2C172.17.255.1%0Adns%3D172.17.255.2%3B%0Adns-search%3Dstefany.eu%0Amay-fail%3Dfalse%0Amethod%3Dmanual%0A"
+        },
+        "mode": 384
+      },
+      {
+        "path": "/etc/modules-load.d/k8s.conf",
+        "contents": {
+          "source": "data:,br_netfilter%0A"
+        },
+        "mode": 420
+      },
+      {
+        "path": "/etc/sysctl.d/75-k8s.conf",
+        "contents": {
+          "source": "data:,net.ipv4.ip_forward%20%3D%201%0Anet.bridge.bridge-nf-call-ip6tables%20%3D%201%0Anet.bridge.bridge-nf-call-iptables%20%3D%201%0A"
+        },
+        "mode": 420
+      },
+      {
+        "path": "/usr/local/bin/kubeadm",
+        "contents": {
+          "source": "https://dl.k8s.io/release/v1.21.0/bin/linux/amd64/kubeadm",
+          "verification": {
+            "hash": "sha512-0673408403a3474c868ae86109f11f9114bca7ddce204be0d169316fb3ce0edefa4b2a472ba9b8308e423e6b927d4098ac36296405570f444f39551fb1c4bbb4"
+          }
+        },
+        "mode": 365
+      },
+      {
+        "path": "/usr/local/bin/kubectl",
+        "contents": {
+          "source": "https://dl.k8s.io/release/v1.21.0/bin/linux/amd64/kubectl",
+          "verification": {
+            "hash": "sha512-9557d298146ef62ffbcf05b3591bf1ce74f345628370447a4f614b5f64e367b5bfa8e397cc4755da9ea38f1ba04c95c65c313e735550ffc3b03c197e936c3e11"
+          }
+        },
+        "mode": 365
+      },
+      {
+        "path": "/usr/local/bin/kubelet",
+        "contents": {
+          "source": "https://dl.k8s.io/release/v1.21.0/bin/linux/amd64/kubelet",
+          "verification": {
+            "hash": "sha512-530689c0cc32ef1830f7ae26ac10995f815043d48a905141e23a34a5e61522c4ee2ff46953648c47c5592d7c2ffa40ce90469a697f36f68475b8da5abd73f9f5"
+          }
+        },
+        "mode": 365
+      }
+    ]
+  },
+  "systemd": {
+    "units": [
+      {
+        "enabled": true,
+        "name": "containerd.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=kubelet: The Kubernetes Node Agent\nDocumentation=https://kubernetes.io/docs/\nWants=network-online.target\nAfter=network-online.target\n\n[Service]\nExecStart=/usr/bin/kubelet\nRestart=always\nStartLimitInterval=0\nRestartSec=10\n\n[Install]\nWantedBy=multi-user.target\n",
+        "dropins": [
+          {
+            "contents": "# Note: This dropin only works with kubeadm and kubelet v1.11+\n[Service]\nEnvironment=\"KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf\"\nEnvironment=\"KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml\"\n# This is a file that \"kubeadm init\" and \"kubeadm join\" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically\nEnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env\n# This is a file that the user can use for overrides of the kubelet args as a last resort. Preferably, the user should use\n# the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.\nEnvironmentFile=-/etc/sysconfig/kubelet\nExecStart=\nExecStart=/usr/local/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS\n",
+            "name": "10-kubeadm.conf"
+          }
+        ],
+        "enabled": true,
+        "name": "kubelet.service"
+      }
+    ]
+  }
+}
