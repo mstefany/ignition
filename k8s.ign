@@ -1,0 +1,109 @@
+{
+  "ignition": {
+    "version": "3.2.0"
+  },
+  "storage": {
+    "files": [
+      {
+        "path": "/etc/modules-load.d/k8s.conf",
+        "contents": {
+          "source": "data:,br_netfilter%0A"
+        },
+        "mode": 420
+      },
+      {
+        "path": "/etc/sysctl.d/75-k8s.conf",
+        "contents": {
+          "source": "data:,net.ipv4.ip_forward%20%3D%201%0Anet.bridge.bridge-nf-call-ip6tables%20%3D%201%0Anet.bridge.bridge-nf-call-iptables%20%3D%201%0A"
+        },
+        "mode": 420
+      },
+      {
+        "path": "/root/init-config.yaml",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/6yQMU/DMBBG9/wKy7vtpAJUZUNVBwYkhBC7k1yjU5y7YF/ahF+PnJahGwObh++907Of8BNiQqZaDXMDvhvtsE8W2Z2rBsTvigGpq9ULoRyYTtjP0QsyFQ2zJIl++uABKNWFUkZJftdKP45riKv9upRSthfhatn5h+9KF8QdvEOPmcyajOXDAeS4SPTPsd9USp05zCOYKcw9kukw1ko7nsQFbGCB1mUsEggkdzPcxsldWbfNdGGMKf4ceghzEoj3rS2TRA5vwRMcqZsYSWqlh30yo8/ztMmSwMnTamHWv0iA+OrJ9xBzFdwnttdbpsUu11WlrUpb2tJVT3obnAIs5v8+4icAAP//90t5Ee4BAAA="
+        },
+        "mode": 384
+      },
+      {
+        "path": "/root/join-controller-config.yaml",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/yyQMY+jMBCFe36FRR+c5HKnyF0UpblqtVmlNzCgEWbGOx6TsL9+BaSznt73PXl8xAdIQiZnhlyDb8dqOKcK2U6HGtQfiwGpdeY/I12ZOuyzeEWmgriFT+gx6Ra4wqyKAHp7qfiL9GnJjJk45BF2MeQeadeiOFNajmoD1vCCxi6YECgk+za8y8lurF1rZdFiangCmRdxzazLePziAWib0vVpyr/jHGSuvp973TdP5cPr6E8/h3It+Yh3kAnkRm1kJHWmHM5pN/qkIGk9QFLoPM0VZPfvdPqzgZmS7+A+YLxeHiDYYbN93ahkKBomFQ4fwRO44jcAAP//8tGSA1sBAAA="
+        },
+        "mode": 384
+      },
+      {
+        "path": "/root/join-worker-config.yaml",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/yyQsY6rQAxFe75iRB8myctbRXRRlGbLzSr9AAZZgD1re0jYr18B6UZX95yrcYj4AFFkKl2fKgjNWPRnLZD9dKjAwjHrkZrSfTLSlanFLkkwZMqIG/iCDtW2oMzcqhjAbi+TcJFOl8y5iYc0wi4OqUPaNSilyz1H8wNW8ILaL5gQGKh/G95l9Rvr11qeNag1TyDzIq6YbRmP39wDbVO2Pl3+f5wHmYuf59729dP48DqG0+8hX0sh4h1kArlRExnJSpf3Z92NQQ1E1wOoQRtoLiCVH6fTvw1MpKGFe4/xenmAYIv19nVnkiD7CwAA//8wPc7HTQEAAA=="
+        },
+        "mode": 384
+      }
+    ]
+  },
+  "systemd": {
+    "units": [
+      {
+        "enabled": false,
+        "mask": true,
+        "name": "docker.socket"
+      },
+      {
+        "enabled": false,
+        "mask": true,
+        "name": "docker.service"
+      },
+      {
+        "enabled": true,
+        "name": "containerd.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=conntrack\nDocumentation=man:conntrack\nWants=network-online.target\nAfter=network-online.target\nConditionPathExists=!/usr/sbin/conntrack\n\n[Service]\nType=oneshot\nExecStartPre=rpm-ostree install conntrack\nExecStart=shutdown -r now\nTimeoutSec=900\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "conntrack.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=kubelet: The Kubernetes Node Agent\nDocumentation=https://kubernetes.io/docs/\nWants=network-online.target\nAfter=network-online.target conntrack.service\n\n[Service]\nExecStart=/usr/bin/kubelet\nRestart=always\nTimeoutSec=900\nStartLimitInterval=0\nRestartSec=10\n\n[Install]\nWantedBy=multi-user.target\n",
+        "dropins": [
+          {
+            "contents": "# Note: This dropin only works with kubeadm and kubelet v1.11+\n[Service]\nEnvironment=\"KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf\"\nEnvironment=\"KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml\"\n# This is a file that \"kubeadm init\" and \"kubeadm join\" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically\nEnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env\n# This is a file that the user can use for overrides of the kubelet args as a last resort. Preferably, the user should use\n# the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.\nEnvironmentFile=-/etc/sysconfig/kubelet\nExecStart=\nExecStart=/usr/local/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS\n",
+            "name": "10-kubeadm.conf"
+          },
+          {
+            "contents": "[Service]\nExecStartPre=rm -f /etc/cni/net.d/87-podman-bridge.conflist\n",
+            "name": "00-podman-cleanup.conf"
+          },
+          {
+            "contents": "[Service]\nExecStartPre=/usr/bin/sh -c \"[ ! -f /usr/local/bin/kubelet ] \u0026\u0026 sleep $[ ( $RANDOM % 120 ) + 1 ] \u0026\u0026 /usr/bin/curl -sL https://dl.k8s.io/release/v1.21.0/bin/linux/amd64/kubelet -o /usr/local/bin/kubelet \u0026\u0026 chmod 0755 /usr/local/bin/kubelet || exit 0\"\n",
+            "name": "01-kubelet-download.conf"
+          },
+          {
+            "contents": "[Service]\nExecStartPre=/usr/bin/sh -c \"[ ! -f /usr/local/bin/kubectl ] \u0026\u0026 sleep $[ ( $RANDOM % 120 ) + 1 ] \u0026\u0026 /usr/bin/curl -sL https://dl.k8s.io/release/v1.21.0/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl \u0026\u0026 chmod 0755 /usr/local/bin/kubectl || exit 0\"\n",
+            "name": "02-kubectl-download.conf"
+          },
+          {
+            "contents": "[Service]\nExecStartPre=/usr/bin/sh -c \"[ ! -f /usr/local/bin/kubeadm ] \u0026\u0026 sleep $[ ( $RANDOM % 120 ) + 1 ] \u0026\u0026 /usr/bin/curl -sL https://dl.k8s.io/release/v1.21.0/bin/linux/amd64/kubeadm -o /usr/local/bin/kubeadm \u0026\u0026 chmod 0755 /usr/local/bin/kubeadm || exit 0\"\n",
+            "name": "03-kubeadm-download.conf"
+          },
+          {
+            "contents": "[Service]\nExecStartPre=/usr/bin/sh -c \"[ ! -f /usr/local/bin/crictl ] \u0026\u0026 sleep $[ ( $RANDOM % 120 ) + 1 ] \u0026\u0026 /usr/bin/curl -sL https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.21.0/crictl-v1.21.0-linux-amd64.tar.gz -o - | /usr/bin/tar xzf - -C /usr/local/bin || exit 0\"\n",
+            "name": "04-crictl-download.conf"
+          },
+          {
+            "contents": "[Service]\nExecStartPre=/usr/bin/sh -c \"[ ! -d /opt/cni/bin ] \u0026\u0026 /usr/bin/mkdir -pv /opt/cni/bin \u0026\u0026 /usr/bin/curl -sL https://github.com/containernetworking/plugins/releases/download/v0.9.1/cni-plugins-linux-amd64-v0.9.1.tgz -o - | /usr/bin/tar xzf - -C /opt/cni/bin || exit 0\"\n",
+            "name": "05-cni-download.conf"
+          },
+          {
+            "contents": "[Service]\nExecStartPre=/usr/local/bin/kubeadm config images pull\n",
+            "name": "20-image-pull.conf"
+          }
+        ],
+        "enabled": true,
+        "name": "kubelet.service"
+      }
+    ]
+  }
+}
